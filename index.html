@@ -239,6 +239,20 @@
 
   .thumb:hover .thumb-remove { opacity: 1; }
 
+  .thumb video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .thumb .video-badge, .result-card .video-badge {
+    position: absolute;
+    bottom: 2px;
+    left: 2px;
+    background: rgba(107,58,58,0.8);
+    color: white;
+    font-size: 8px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+  }
+
   .clear-btn {
     height: 52px;
     padding: 0 16px;
@@ -481,7 +495,7 @@
     box-shadow: 0 8px 24px rgba(200,144,126,0.12);
   }
 
-  .result-card img {
+  .result-card img, .result-card video {
     width: 100%;
     height: 110px;
     object-fit: cover;
@@ -581,10 +595,10 @@
   <div class="drop-row">
     <div class="drop-zone" id="imageZone">
       <span class="drop-icon">📷</span>
-      <div class="drop-title">Trage pozele aici</div>
-      <div class="drop-hint">JPG, PNG, WebP — câte vrei tu</div>
+      <div class="drop-title">Trage pozele sau videoclipurile aici</div>
+      <div class="drop-hint">Poze (JPG, PNG, WebP) + Video (MP4, WebM, MOV)</div>
       <div id="imagesBadge"></div>
-      <input type="file" id="imageInput" multiple accept="image/*" style="display:none">
+      <input type="file" id="imageInput" multiple accept="image/*,video/*" style="display:none">
     </div>
     <div class="drop-zone" id="logoZone">
       <div id="logoContent">
@@ -622,7 +636,7 @@
   </div>
 
   <!-- Process button -->
-  <button class="process-btn disabled" id="processBtn" disabled>Adaugă poze ca să începi</button>
+  <button class="process-btn disabled" id="processBtn" disabled>Adaugă poze sau videoclipuri ca să începi</button>
   <div class="progress-bar" id="progressBar" style="display:none"><div class="progress-fill" id="progressFill"></div></div>
 
   <!-- Results -->
@@ -638,7 +652,8 @@
 <!-- Modal -->
 <div class="modal-overlay" id="modal" style="display:none" onclick="closeModal()">
   <div class="modal-content" onclick="event.stopPropagation()">
-    <img id="modalImg" src="">
+    <img id="modalImg" src="" style="display:none">
+    <video id="modalVideo" controls style="display:none; max-width:100%; max-height:78vh; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,0.3);"></video>
     <div class="modal-actions">
       <a id="modalDownload" class="modal-download" download>↓ Descarcă</a>
       <button class="modal-close" onclick="closeModal()">Închide</button>
@@ -655,11 +670,19 @@ const POSITIONS = [
   { id: 'center',       label: '⭐ Centru' },
 ];
 
-let images = [];
+let files = [];
 let logo = null;
 let logoDataUrl = null;
 let position = 'bottom-right';
 let results = [];
+
+function isVideo(file) {
+  return file.type.startsWith('video/');
+}
+
+function isMedia(file) {
+  return file.type.startsWith('image/') || file.type.startsWith('video/');
+}
 
 // Build position buttons
 const posGrid = document.getElementById('posGrid');
@@ -692,31 +715,41 @@ function setupDropZone(zoneEl, inputEl, onFiles) {
   zoneEl.ondrop = e => {
     e.preventDefault();
     zoneEl.classList.remove('drag-over');
-    const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
-    if (files.length) onFiles(files);
+    const dropped = [...e.dataTransfer.files].filter(isMedia);
+    if (dropped.length) onFiles(dropped);
   };
   inputEl.onchange = () => { onFiles([...inputEl.files]); inputEl.value = ''; };
 }
 
-setupDropZone(document.getElementById('imageZone'), document.getElementById('imageInput'), files => {
-  images = [...images, ...files];
+setupDropZone(document.getElementById('imageZone'), document.getElementById('imageInput'), newFiles => {
+  files = [...files, ...newFiles];
   updateUI();
 });
 
-setupDropZone(document.getElementById('logoZone'), document.getElementById('logoInput'), files => {
-  logo = files[0];
+setupDropZone(document.getElementById('logoZone'), document.getElementById('logoInput'), newFiles => {
+  logo = newFiles[0];
   const r = new FileReader();
   r.onload = e => {
     logoDataUrl = e.target.result;
     updateUI();
   };
-  r.readAsDataURL(files[0]);
+  r.readAsDataURL(newFiles[0]);
 });
 
 function updateUI() {
+  const imgCount = files.filter(f => !isVideo(f)).length;
+  const vidCount = files.filter(f => isVideo(f)).length;
+
   // Badge
   const badgeEl = document.getElementById('imagesBadge');
-  badgeEl.innerHTML = images.length ? `<span class="badge">${images.length} ${images.length === 1 ? 'poză' : 'poze'} încărcate</span>` : '';
+  if (files.length) {
+    const parts = [];
+    if (imgCount) parts.push(`${imgCount} ${imgCount === 1 ? 'poză' : 'poze'}`);
+    if (vidCount) parts.push(`${vidCount} ${vidCount === 1 ? 'video' : 'videoclipuri'}`);
+    badgeEl.innerHTML = `<span class="badge">${parts.join(' + ')} încărcate</span>`;
+  } else {
+    badgeEl.innerHTML = '';
+  }
 
   // Logo preview
   const logoContent = document.getElementById('logoContent');
@@ -729,33 +762,37 @@ function updateUI() {
 
   // Thumbnails
   const thumbsEl = document.getElementById('thumbs');
-  if (images.length > 0) {
+  if (files.length > 0) {
     thumbsEl.style.display = 'flex';
     thumbsEl.innerHTML = '';
-    const show = images.slice(0, 20);
-    show.forEach((img, i) => {
+    const show = files.slice(0, 20);
+    show.forEach((file, i) => {
       const div = document.createElement('div');
       div.className = 'thumb';
-      const url = URL.createObjectURL(img);
-      div.innerHTML = `<img src="${url}"><button class="thumb-remove" data-idx="${i}">×</button>`;
+      const url = URL.createObjectURL(file);
+      if (isVideo(file)) {
+        div.innerHTML = `<video src="${url}" muted></video><span class="video-badge">▶ VID</span><button class="thumb-remove" data-idx="${i}">×</button>`;
+      } else {
+        div.innerHTML = `<img src="${url}"><button class="thumb-remove" data-idx="${i}">×</button>`;
+      }
       div.querySelector('.thumb-remove').onclick = e => {
         e.stopPropagation();
-        images.splice(i, 1);
+        files.splice(i, 1);
         updateUI();
       };
       thumbsEl.appendChild(div);
     });
-    if (images.length > 20) {
+    if (files.length > 20) {
       const more = document.createElement('div');
       more.className = 'thumb';
       more.style.cssText = 'display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--rose);background:var(--warm);';
-      more.textContent = '+' + (images.length - 20);
+      more.textContent = '+' + (files.length - 20);
       thumbsEl.appendChild(more);
     }
     const clearBtn = document.createElement('button');
     clearBtn.className = 'clear-btn';
     clearBtn.textContent = 'Șterge tot';
-    clearBtn.onclick = () => { images = []; updateUI(); };
+    clearBtn.onclick = () => { files = []; updateUI(); };
     thumbsEl.appendChild(clearBtn);
   } else {
     thumbsEl.style.display = 'none';
@@ -763,8 +800,9 @@ function updateUI() {
 
   // Button state
   const btn = document.getElementById('processBtn');
-  if (!images.length) {
-    btn.textContent = 'Adaugă poze ca să începi';
+  const totalLabel = files.length === 1 ? '1 fișier' : `${files.length} fișiere`;
+  if (!files.length) {
+    btn.textContent = 'Adaugă poze sau videoclipuri ca să începi';
     btn.className = 'process-btn disabled';
     btn.disabled = true;
   } else if (!logo) {
@@ -772,7 +810,7 @@ function updateUI() {
     btn.className = 'process-btn disabled';
     btn.disabled = true;
   } else {
-    btn.textContent = `Pune watermark pe ${images.length} ${images.length === 1 ? 'poză' : 'poze'}`;
+    btn.textContent = `Pune watermark pe ${totalLabel}`;
     btn.className = 'process-btn ready';
     btn.disabled = false;
   }
@@ -788,9 +826,152 @@ function loadImg(src) {
   });
 }
 
-// Process
+// Calculate watermark position
+function calcWmPos(w, h, wmW, wmH, padX, padY) {
+  switch (position) {
+    case 'bottom-right': return [w - wmW - padX, h - wmH - padY];
+    case 'bottom-left':  return [padX, h - wmH - padY];
+    case 'top-right':    return [w - wmW - padX, padY];
+    case 'top-left':     return [padX, padY];
+    case 'center':       return [(w - wmW) / 2, (h - wmH) / 2];
+  }
+}
+
+// Process a single image
+async function processImage(file, wm, opacity, scale, padding) {
+  const imgUrl = URL.createObjectURL(file);
+  const img = await loadImg(imgUrl);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+
+  const wmW = img.width * scale;
+  const wmH = (wm.height / wm.width) * wmW;
+  const padX = img.width * padding;
+  const padY = img.height * padding;
+  const [x, y] = calcWmPos(img.width, img.height, wmW, wmH, padX, padY);
+
+  ctx.globalAlpha = opacity;
+  ctx.drawImage(wm, x, y, wmW, wmH);
+  ctx.globalAlpha = 1;
+
+  URL.revokeObjectURL(imgUrl);
+
+  const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+  return { name: file.name, url: URL.createObjectURL(blob), blob, type: 'image' };
+}
+
+// Process a single video
+async function processVideo(file, wm, opacity, scale, padding, onProgress) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.muted = true;
+    video.playsInline = true;
+    const url = URL.createObjectURL(file);
+    video.src = url;
+
+    video.onloadedmetadata = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+
+      const wmW = canvas.width * scale;
+      const wmH = (wm.height / wm.width) * wmW;
+      const padX = canvas.width * padding;
+      const padY = canvas.height * padding;
+      const [wx, wy] = calcWmPos(canvas.width, canvas.height, wmW, wmH, padX, padY);
+
+      // Set up MediaRecorder with canvas stream
+      const canvasStream = canvas.captureStream(30);
+
+      // Try to get audio from the video
+      let combinedStream = canvasStream;
+      try {
+        const audioCtx = new AudioContext();
+        const source = audioCtx.createMediaElementSource(video);
+        const dest = audioCtx.createMediaStreamDestination();
+        source.connect(dest);
+        source.connect(audioCtx.destination); // so the video can play
+        const audioTrack = dest.stream.getAudioTracks()[0];
+        if (audioTrack) {
+          combinedStream = new MediaStream([
+            ...canvasStream.getVideoTracks(),
+            audioTrack
+          ]);
+        }
+      } catch(e) {
+        // No audio or not supported, continue without audio
+      }
+
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9'
+        : 'video/webm';
+
+      const recorder = new MediaRecorder(combinedStream, {
+        mimeType,
+        videoBitsPerSecond: 5000000
+      });
+
+      const chunks = [];
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+      recorder.onstop = () => {
+        URL.revokeObjectURL(url);
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const outName = file.name.replace(/\.[^.]+$/, '') + '.webm';
+        const outUrl = URL.createObjectURL(blob);
+        resolve({ name: outName, url: outUrl, blob, type: 'video' });
+      };
+
+      recorder.onerror = e => reject(e);
+
+      // Draw loop
+      let lastProgress = 0;
+      function drawFrame() {
+        if (video.paused || video.ended) {
+          recorder.stop();
+          return;
+        }
+        ctx.globalAlpha = 1;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx.globalAlpha = opacity;
+        ctx.drawImage(wm, wx, wy, wmW, wmH);
+
+        const pct = video.duration ? (video.currentTime / video.duration) : 0;
+        if (pct - lastProgress > 0.02) {
+          lastProgress = pct;
+          onProgress(pct);
+        }
+
+        requestAnimationFrame(drawFrame);
+      }
+
+      video.onplay = () => {
+        recorder.start();
+        drawFrame();
+      };
+
+      video.onended = () => {
+        // Small delay to capture final frames
+        setTimeout(() => {
+          if (recorder.state === 'recording') recorder.stop();
+        }, 200);
+      };
+
+      video.play().catch(reject);
+    };
+
+    video.onerror = reject;
+  });
+}
+
+// Main process
 document.getElementById('processBtn').onclick = async function() {
-  if (!images.length || !logo) return;
+  if (!files.length || !logo) return;
 
   const btn = this;
   btn.className = 'process-btn working';
@@ -805,55 +986,45 @@ document.getElementById('processBtn').onclick = async function() {
   const scale = scSlider.value / 100;
   const padding = padSlider.value / 100;
 
+  // Load watermark image once
+  const logoUrl = URL.createObjectURL(logo);
+  const wm = await loadImg(logoUrl);
+  URL.revokeObjectURL(logoUrl);
+
   results = [];
 
-  for (let i = 0; i < images.length; i++) {
-    const imgUrl = URL.createObjectURL(images[i]);
-    const logoUrl = URL.createObjectURL(logo);
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const baseProgress = i / files.length;
+    const fileWeight = 1 / files.length;
 
-    const [img, wm] = await Promise.all([loadImg(imgUrl), loadImg(logoUrl)]);
-
-    const canvas = document.createElement('canvas');
-    canvas.width = img.width;
-    canvas.height = img.height;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0);
-
-    const wmW = img.width * scale;
-    const wmH = (wm.height / wm.width) * wmW;
-    const padX = img.width * padding;
-    const padY = img.height * padding;
-
-    let x, y;
-    switch (position) {
-      case 'bottom-right': x = img.width - wmW - padX; y = img.height - wmH - padY; break;
-      case 'bottom-left':  x = padX; y = img.height - wmH - padY; break;
-      case 'top-right':    x = img.width - wmW - padX; y = padY; break;
-      case 'top-left':     x = padX; y = padY; break;
-      case 'center':       x = (img.width - wmW) / 2; y = (img.height - wmH) / 2; break;
+    try {
+      let result;
+      if (isVideo(file)) {
+        btn.textContent = `🎬 Video ${i + 1}/${files.length} — se procesează...`;
+        result = await processVideo(file, wm, opacity, scale, padding, (vPct) => {
+          const totalPct = (baseProgress + vPct * fileWeight) * 100;
+          progressFill.style.width = totalPct + '%';
+        });
+      } else {
+        result = await processImage(file, wm, opacity, scale, padding);
+      }
+      results.push(result);
+    } catch(e) {
+      console.error('Eroare la procesare:', file.name, e);
     }
 
-    ctx.globalAlpha = opacity;
-    ctx.drawImage(wm, x, y, wmW, wmH);
-    ctx.globalAlpha = 1;
-
-    URL.revokeObjectURL(imgUrl);
-    URL.revokeObjectURL(logoUrl);
-
-    const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
-    const url = URL.createObjectURL(blob);
-    results.push({ name: images[i].name, url, blob });
-
-    const pct = ((i + 1) / images.length) * 100;
+    const pct = ((i + 1) / files.length) * 100;
     progressFill.style.width = pct + '%';
-    btn.textContent = `Se lucrează... ${Math.round(pct)}%`;
+    if (!isVideo(file)) {
+      btn.textContent = `Se lucrează... ${Math.round(pct)}%`;
+    }
 
-    // Let the UI breathe
     await new Promise(r => setTimeout(r, 10));
   }
 
   progressBar.style.display = 'none';
-  btn.textContent = `✓ Gata! ${results.length} poze cu watermark`;
+  btn.textContent = `✓ Gata! ${results.length} fișiere cu watermark`;
   btn.className = 'process-btn ready';
   btn.disabled = false;
   btn.onclick = document.getElementById('processBtn').onclick;
@@ -864,14 +1035,19 @@ document.getElementById('processBtn').onclick = async function() {
 function showResults() {
   const section = document.getElementById('resultsSection');
   section.style.display = 'block';
-  document.getElementById('resultsTitle').textContent = `${results.length} ${results.length === 1 ? 'poză gata' : 'poze gata'} ✿`;
+  document.getElementById('resultsTitle').textContent = `${results.length} ${results.length === 1 ? 'fișier gata' : 'fișiere gata'} ✿`;
 
   const grid = document.getElementById('resultsGrid');
   grid.innerHTML = '';
   results.forEach((r, i) => {
     const card = document.createElement('div');
     card.className = 'result-card';
-    card.innerHTML = `<img src="${r.url}"><div class="name">${r.name}</div>`;
+    card.style.position = 'relative';
+    if (r.type === 'video') {
+      card.innerHTML = `<video src="${r.url}" muted style="width:100%;height:110px;object-fit:cover;display:block;"></video><span class="video-badge" style="position:absolute;top:6px;left:6px;">▶ VID</span><div class="name">${r.name}</div>`;
+    } else {
+      card.innerHTML = `<img src="${r.url}"><div class="name">${r.name}</div>`;
+    }
     card.onclick = () => openModal(i);
     grid.appendChild(card);
   });
@@ -892,7 +1068,20 @@ document.getElementById('downloadAllBtn').onclick = () => {
 // Modal
 function openModal(i) {
   const r = results[i];
-  document.getElementById('modalImg').src = r.url;
+  const imgEl = document.getElementById('modalImg');
+  const vidEl = document.getElementById('modalVideo');
+
+  if (r.type === 'video') {
+    imgEl.style.display = 'none';
+    vidEl.style.display = 'block';
+    vidEl.src = r.url;
+  } else {
+    vidEl.style.display = 'none';
+    vidEl.src = '';
+    imgEl.style.display = 'block';
+    imgEl.src = r.url;
+  }
+
   const dl = document.getElementById('modalDownload');
   dl.href = r.url;
   dl.download = 'watermarked_' + r.name;
@@ -901,6 +1090,9 @@ function openModal(i) {
 
 function closeModal() {
   document.getElementById('modal').style.display = 'none';
+  const vidEl = document.getElementById('modalVideo');
+  vidEl.pause();
+  vidEl.src = '';
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
