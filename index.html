@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ro">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pentru Ticu — Watermark Tool</title>
+<title>Pentru Ticu — Watermark</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌸</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -462,7 +463,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 12px;
-    margin-bottom: 48px;
+    margin-bottom: 64px;
   }
 
   .result-card {
@@ -554,27 +555,6 @@
     border: 1.5px solid rgba(255,255,255,0.25);
   }
 
-  /* Footer */
-  footer {
-    text-align: center;
-    padding: 32px 0 40px;
-    animation: fadeUp 1s ease 0.5s both;
-  }
-
-  .footer-text {
-    font-family: 'Playfair Display', serif;
-    font-style: italic;
-    font-size: 14px;
-    color: var(--blush);
-  }
-
-  .footer-note {
-    font-size: 11px;
-    color: var(--blush);
-    opacity: 0.6;
-    margin-top: 6px;
-  }
-
   /* Flower decoration */
   .flower {
     display: inline-block;
@@ -593,7 +573,7 @@
 <div class="container" id="app">
   <header>
     <div class="brand">Pentru <em>Ticu</em></div>
-    <div class="subtitle">batch watermark tool</div>
+    <div class="subtitle">watermark pe toate pozele dintr-o dată</div>
     <div class="heart-divider"><span class="flower">✿</span></div>
   </header>
 
@@ -601,16 +581,16 @@
   <div class="drop-row">
     <div class="drop-zone" id="imageZone">
       <span class="drop-icon">📷</span>
-      <div class="drop-title">Drop your photos here</div>
-      <div class="drop-hint">JPG, PNG, WebP — as many as you like</div>
+      <div class="drop-title">Trage pozele aici</div>
+      <div class="drop-hint">JPG, PNG, WebP — câte vrei tu</div>
       <div id="imagesBadge"></div>
       <input type="file" id="imageInput" multiple accept="image/*" style="display:none">
     </div>
     <div class="drop-zone" id="logoZone">
       <div id="logoContent">
         <span class="drop-icon">🏷️</span>
-        <div class="drop-title">Your logo / watermark</div>
-        <div class="drop-hint">PNG with transparency works best</div>
+        <div class="drop-title">Logo-ul / watermark-ul tău</div>
+        <div class="drop-hint">PNG cu fundal transparent merge cel mai bine</div>
       </div>
       <input type="file" id="logoInput" accept="image/*" style="display:none">
     </div>
@@ -622,42 +602,37 @@
   <!-- Controls -->
   <div class="controls">
     <div>
-      <div class="control-label">Position</div>
+      <div class="control-label">Poziție</div>
       <div class="position-grid" id="posGrid"></div>
     </div>
     <div>
       <div class="slider-group">
-        <div class="slider-header"><span>Opacity</span><span id="opVal">80%</span></div>
+        <div class="slider-header"><span>Transparență</span><span id="opVal">80%</span></div>
         <input type="range" id="opSlider" min="5" max="100" value="80">
       </div>
       <div class="slider-group">
-        <div class="slider-header"><span>Size</span><span id="scVal">15%</span></div>
+        <div class="slider-header"><span>Mărime</span><span id="scVal">15%</span></div>
         <input type="range" id="scSlider" min="3" max="50" value="15">
       </div>
       <div class="slider-group">
-        <div class="slider-header"><span>Padding</span><span id="padVal">3%</span></div>
+        <div class="slider-header"><span>Distanță de margine</span><span id="padVal">3%</span></div>
         <input type="range" id="padSlider" min="0" max="15" value="3">
       </div>
     </div>
   </div>
 
   <!-- Process button -->
-  <button class="process-btn disabled" id="processBtn" disabled>Add some photos to begin</button>
+  <button class="process-btn disabled" id="processBtn" disabled>Adaugă poze ca să începi</button>
   <div class="progress-bar" id="progressBar" style="display:none"><div class="progress-fill" id="progressFill"></div></div>
 
   <!-- Results -->
   <div id="resultsSection" style="display:none">
     <div class="results-header">
       <div class="results-title" id="resultsTitle"></div>
-      <button class="download-all-btn" id="downloadAllBtn">↓ Download all</button>
+      <button class="download-all-btn" id="downloadAllBtn">↓ Descarcă toate</button>
     </div>
     <div class="results-grid" id="resultsGrid"></div>
   </div>
-
-  <footer>
-    <div class="footer-text">made with love <span class="flower">♥</span></div>
-    <div class="footer-note">100% private — nothing leaves your browser</div>
-  </footer>
 </div>
 
 <!-- Modal -->
@@ -665,19 +640,19 @@
   <div class="modal-content" onclick="event.stopPropagation()">
     <img id="modalImg" src="">
     <div class="modal-actions">
-      <a id="modalDownload" class="modal-download" download>↓ Download</a>
-      <button class="modal-close" onclick="closeModal()">Close</button>
+      <a id="modalDownload" class="modal-download" download>↓ Descarcă</a>
+      <button class="modal-close" onclick="closeModal()">Închide</button>
     </div>
   </div>
 </div>
 
 <script>
 const POSITIONS = [
-  { id: 'bottom-right', label: 'Bottom Right' },
-  { id: 'bottom-left',  label: 'Bottom Left' },
-  { id: 'top-right',    label: 'Top Right' },
-  { id: 'top-left',     label: 'Top Left' },
-  { id: 'center',       label: 'Center' },
+  { id: 'bottom-right', label: '↘️ Jos-Dreapta' },
+  { id: 'bottom-left',  label: '↙️ Jos-Stânga' },
+  { id: 'top-right',    label: '↗️ Sus-Dreapta' },
+  { id: 'top-left',     label: '↖️ Sus-Stânga' },
+  { id: 'center',       label: '⭐ Centru' },
 ];
 
 let images = [];
@@ -741,14 +716,14 @@ setupDropZone(document.getElementById('logoZone'), document.getElementById('logo
 function updateUI() {
   // Badge
   const badgeEl = document.getElementById('imagesBadge');
-  badgeEl.innerHTML = images.length ? `<span class="badge">${images.length} photo${images.length !== 1 ? 's' : ''} ready</span>` : '';
+  badgeEl.innerHTML = images.length ? `<span class="badge">${images.length} ${images.length === 1 ? 'poză' : 'poze'} încărcate</span>` : '';
 
   // Logo preview
   const logoContent = document.getElementById('logoContent');
   if (logoDataUrl) {
     logoContent.innerHTML = `
       <img src="${logoDataUrl}" class="logo-preview-img" alt="logo">
-      <div class="drop-hint" style="color:var(--deep-rose);">✓ Logo loaded — click to change</div>
+      <div class="drop-hint" style="color:var(--deep-rose);">✓ Logo încărcat — click să schimbi</div>
     `;
   }
 
@@ -779,7 +754,7 @@ function updateUI() {
     }
     const clearBtn = document.createElement('button');
     clearBtn.className = 'clear-btn';
-    clearBtn.textContent = 'Clear all';
+    clearBtn.textContent = 'Șterge tot';
     clearBtn.onclick = () => { images = []; updateUI(); };
     thumbsEl.appendChild(clearBtn);
   } else {
@@ -789,15 +764,15 @@ function updateUI() {
   // Button state
   const btn = document.getElementById('processBtn');
   if (!images.length) {
-    btn.textContent = 'Add some photos to begin';
+    btn.textContent = 'Adaugă poze ca să începi';
     btn.className = 'process-btn disabled';
     btn.disabled = true;
   } else if (!logo) {
-    btn.textContent = 'Now add your logo';
+    btn.textContent = 'Acum adaugă logo-ul';
     btn.className = 'process-btn disabled';
     btn.disabled = true;
   } else {
-    btn.textContent = `Watermark ${images.length} photo${images.length !== 1 ? 's' : ''}`;
+    btn.textContent = `Pune watermark pe ${images.length} ${images.length === 1 ? 'poză' : 'poze'}`;
     btn.className = 'process-btn ready';
     btn.disabled = false;
   }
@@ -871,14 +846,14 @@ document.getElementById('processBtn').onclick = async function() {
 
     const pct = ((i + 1) / images.length) * 100;
     progressFill.style.width = pct + '%';
-    btn.textContent = `Working... ${Math.round(pct)}%`;
+    btn.textContent = `Se lucrează... ${Math.round(pct)}%`;
 
     // Let the UI breathe
     await new Promise(r => setTimeout(r, 10));
   }
 
   progressBar.style.display = 'none';
-  btn.textContent = `✓ Done! ${results.length} photos watermarked`;
+  btn.textContent = `✓ Gata! ${results.length} poze cu watermark`;
   btn.className = 'process-btn ready';
   btn.disabled = false;
   btn.onclick = document.getElementById('processBtn').onclick;
@@ -889,7 +864,7 @@ document.getElementById('processBtn').onclick = async function() {
 function showResults() {
   const section = document.getElementById('resultsSection');
   section.style.display = 'block';
-  document.getElementById('resultsTitle').textContent = `${results.length} photo${results.length !== 1 ? 's' : ''} ready ✿`;
+  document.getElementById('resultsTitle').textContent = `${results.length} ${results.length === 1 ? 'poză gata' : 'poze gata'} ✿`;
 
   const grid = document.getElementById('resultsGrid');
   grid.innerHTML = '';
