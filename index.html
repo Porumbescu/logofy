@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pentru Ticu — Watermark Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #faf6f1;
+    --warm: #f3ece3;
+    --blush: #e8c4b8;
+    --rose: #c9907e;
+    --deep-rose: #a8685a;
+    --wine: #6b3a3a;
+    --charcoal: #2d2424;
+    --soft-white: #fffcf9;
+    --gold: #c4a265;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--charcoal);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Subtle texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c9907e' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='1.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* Header */
+  header {
+    padding: 48px 0 40px;
+    text-align: center;
+    animation: fadeDown 0.8s ease;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .brand {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--wine);
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+
+  .brand em {
+    font-style: italic;
+    color: var(--rose);
+    font-weight: 400;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: var(--rose);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 400;
+  }
+
+  .heart-divider {
+    margin: 32px auto 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    color: var(--blush);
+  }
+
+  .heart-divider::before,
+  .heart-divider::after {
+    content: '';
+    width: 80px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--blush), transparent);
+  }
+
+  /* Drop zones */
+  .drop-row {
+    display: grid;
+    grid-template-columns: 1fr 260px;
+    gap: 20px;
+    margin-bottom: 20px;
+    animation: fadeUp 0.8s ease 0.15s both;
+  }
+
+  @media (max-width: 700px) {
+    .drop-row { grid-template-columns: 1fr; }
+  }
+
+  .drop-zone {
+    border: 2px dashed var(--blush);
+    border-radius: 16px;
+    padding: 36px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: var(--soft-white);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .drop-zone::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 120%, var(--blush), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--rose);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(200,144,126,0.12);
+  }
+
+  .drop-zone:hover::after, .drop-zone.drag-over::after {
+    opacity: 0.08;
+  }
+
+  .drop-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .drop-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--wine);
+    margin-bottom: 4px;
+  }
+
+  .drop-hint {
+    font-size: 12px;
+    color: var(--rose);
+    opacity: 0.8;
+  }
+
+  .badge {
+    display: inline-block;
+    margin-top: 10px;
+    background: var(--rose);
+    color: white;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .logo-preview-img {
+    max-height: 48px;
+    max-width: 80%;
+    object-fit: contain;
+    border-radius: 8px;
+    padding: 6px;
+    background: var(--warm);
+    margin-bottom: 8px;
+  }
+
+  /* Thumbnails */
+  .thumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.5s ease;
+  }
+
+  .thumb {
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    border: 2px solid var(--warm);
+    transition: all 0.2s;
+  }
+
+  .thumb:hover { border-color: var(--rose); transform: scale(1.05); }
+
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .thumb-remove {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(107,58,58,0.8);
+    color: white;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s;
+    border: none;
+  }
+
+  .thumb:hover .thumb-remove { opacity: 1; }
+
+  .clear-btn {
+    height: 52px;
+    padding: 0 16px;
+    border-radius: 10px;
+    background: none;
+    border: 2px solid var(--blush);
+    color: var(--deep-rose);
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+  }
+
+  .clear-btn:hover { background: var(--blush); color: white; }
+
+  /* Controls panel */
+  .controls {
+    background: var(--soft-white);
+    border: 1px solid var(--warm);
+    border-radius: 16px;
+    padding: 28px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.8s ease 0.25s both;
+  }
+
+  @media (max-width: 600px) {
+    .controls { grid-template-columns: 1fr; }
+  }
+
+  .control-label {
+    font-size: 11px;
+    color: var(--rose);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 10px;
+  }
+
+  .position-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .pos-btn {
+    padding: 7px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    border: 1.5px solid var(--warm);
+    background: transparent;
+    color: var(--charcoal);
+    transition: all 0.2s;
+  }
+
+  .pos-btn:hover { border-color: var(--blush); }
+
+  .pos-btn.active {
+    background: var(--rose);
+    color: white;
+    border-color: var(--rose);
+    font-weight: 500;
+  }
+
+  .slider-group { margin-bottom: 18px; }
+  .slider-group:last-child { margin-bottom: 0; }
+
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .slider-header span:first-child {
+    font-size: 11px;
+    color: var(--rose);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  .slider-header span:last-child {
+    font-size: 12px;
+    color: var(--deep-rose);
+    font-weight: 600;
+    font-family: 'Playfair Display', serif;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 5px;
+    background: var(--warm);
+    border-radius: 3px;
+    outline: none;
+    transition: background 0.2s;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    background: var(--rose);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid var(--soft-white);
+    box-shadow: 0 2px 8px rgba(200,144,126,0.3);
+    transition: transform 0.15s;
+  }
+
+  input[type=range]::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+  }
+
+  input[type=range]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: var(--rose);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid var(--soft-white);
+    box-shadow: 0 2px 8px rgba(200,144,126,0.3);
+  }
+
+  /* Process button */
+  .process-btn {
+    width: 100%;
+    padding: 18px;
+    border-radius: 14px;
+    border: none;
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    letter-spacing: 0.01em;
+    margin-bottom: 8px;
+    animation: fadeUp 0.8s ease 0.35s both;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .process-btn.ready {
+    background: linear-gradient(135deg, var(--rose), var(--deep-rose));
+    color: white;
+    box-shadow: 0 6px 24px rgba(168,104,90,0.25);
+  }
+
+  .process-btn.ready:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(168,104,90,0.35);
+  }
+
+  .process-btn.disabled {
+    background: var(--warm);
+    color: var(--blush);
+    cursor: not-allowed;
+  }
+
+  .process-btn.working {
+    background: var(--warm);
+    color: var(--deep-rose);
+    cursor: wait;
+  }
+
+  /* Progress */
+  .progress-bar {
+    height: 4px;
+    background: var(--warm);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--rose), var(--gold));
+    border-radius: 2px;
+    transition: width 0.25s ease;
+  }
+
+  /* Results */
+  .results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .results-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--wine);
+  }
+
+  .download-all-btn {
+    padding: 9px 24px;
+    border-radius: 8px;
+    border: 1.5px solid var(--rose);
+    background: transparent;
+    color: var(--deep-rose);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .download-all-btn:hover {
+    background: var(--rose);
+    color: white;
+  }
+
+  .results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 48px;
+  }
+
+  .result-card {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1.5px solid var(--warm);
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--soft-white);
+  }
+
+  .result-card:hover {
+    border-color: var(--rose);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(200,144,126,0.12);
+  }
+
+  .result-card img {
+    width: 100%;
+    height: 110px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .result-card .name {
+    padding: 8px 10px;
+    font-size: 11px;
+    color: var(--rose);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(45,36,36,0.7);
+    backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 40px;
+    animation: scaleIn 0.25s ease;
+  }
+
+  .modal-content {
+    max-width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .modal-content img {
+    max-width: 100%;
+    max-height: 78vh;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  .modal-actions a, .modal-actions button {
+    padding: 9px 24px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .modal-download {
+    background: var(--rose);
+    color: white;
+    border: none;
+  }
+
+  .modal-close {
+    background: transparent;
+    color: var(--cream);
+    border: 1.5px solid rgba(255,255,255,0.25);
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 32px 0 40px;
+    animation: fadeUp 1s ease 0.5s both;
+  }
+
+  .footer-text {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--blush);
+  }
+
+  .footer-note {
+    font-size: 11px;
+    color: var(--blush);
+    opacity: 0.6;
+    margin-top: 6px;
+  }
+
+  /* Flower decoration */
+  .flower {
+    display: inline-block;
+    font-size: 14px;
+    animation: bloom 3s ease infinite;
+  }
+
+  @keyframes bloom {
+    0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.7; }
+    50% { transform: scale(1.15) rotate(5deg); opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container" id="app">
+  <header>
+    <div class="brand">Pentru <em>Ticu</em></div>
+    <div class="subtitle">batch watermark tool</div>
+    <div class="heart-divider"><span class="flower">✿</span></div>
+  </header>
+
+  <!-- Drop zones -->
+  <div class="drop-row">
+    <div class="drop-zone" id="imageZone">
+      <span class="drop-icon">📷</span>
+      <div class="drop-title">Drop your photos here</div>
+      <div class="drop-hint">JPG, PNG, WebP — as many as you like</div>
+      <div id="imagesBadge"></div>
+      <input type="file" id="imageInput" multiple accept="image/*" style="display:none">
+    </div>
+    <div class="drop-zone" id="logoZone">
+      <div id="logoContent">
+        <span class="drop-icon">🏷️</span>
+        <div class="drop-title">Your logo / watermark</div>
+        <div class="drop-hint">PNG with transparency works best</div>
+      </div>
+      <input type="file" id="logoInput" accept="image/*" style="display:none">
+    </div>
+  </div>
+
+  <!-- Thumbnails -->
+  <div class="thumbs" id="thumbs" style="display:none"></div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div>
+      <div class="control-label">Position</div>
+      <div class="position-grid" id="posGrid"></div>
+    </div>
+    <div>
+      <div class="slider-group">
+        <div class="slider-header"><span>Opacity</span><span id="opVal">80%</span></div>
+        <input type="range" id="opSlider" min="5" max="100" value="80">
+      </div>
+      <div class="slider-group">
+        <div class="slider-header"><span>Size</span><span id="scVal">15%</span></div>
+        <input type="range" id="scSlider" min="3" max="50" value="15">
+      </div>
+      <div class="slider-group">
+        <div class="slider-header"><span>Padding</span><span id="padVal">3%</span></div>
+        <input type="range" id="padSlider" min="0" max="15" value="3">
+      </div>
+    </div>
+  </div>
+
+  <!-- Process button -->
+  <button class="process-btn disabled" id="processBtn" disabled>Add some photos to begin</button>
+  <div class="progress-bar" id="progressBar" style="display:none"><div class="progress-fill" id="progressFill"></div></div>
+
+  <!-- Results -->
+  <div id="resultsSection" style="display:none">
+    <div class="results-header">
+      <div class="results-title" id="resultsTitle"></div>
+      <button class="download-all-btn" id="downloadAllBtn">↓ Download all</button>
+    </div>
+    <div class="results-grid" id="resultsGrid"></div>
+  </div>
+
+  <footer>
+    <div class="footer-text">made with love <span class="flower">♥</span></div>
+    <div class="footer-note">100% private — nothing leaves your browser</div>
+  </footer>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal" style="display:none" onclick="closeModal()">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <img id="modalImg" src="">
+    <div class="modal-actions">
+      <a id="modalDownload" class="modal-download" download>↓ Download</a>
+      <button class="modal-close" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const POSITIONS = [
+  { id: 'bottom-right', label: 'Bottom Right' },
+  { id: 'bottom-left',  label: 'Bottom Left' },
+  { id: 'top-right',    label: 'Top Right' },
+  { id: 'top-left',     label: 'Top Left' },
+  { id: 'center',       label: 'Center' },
+];
+
+let images = [];
+let logo = null;
+let logoDataUrl = null;
+let position = 'bottom-right';
+let results = [];
+
+// Build position buttons
+const posGrid = document.getElementById('posGrid');
+POSITIONS.forEach(p => {
+  const btn = document.createElement('button');
+  btn.className = 'pos-btn' + (p.id === position ? ' active' : '');
+  btn.textContent = p.label;
+  btn.dataset.pos = p.id;
+  btn.onclick = () => {
+    position = p.id;
+    posGrid.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  };
+  posGrid.appendChild(btn);
+});
+
+// Sliders
+const opSlider = document.getElementById('opSlider');
+const scSlider = document.getElementById('scSlider');
+const padSlider = document.getElementById('padSlider');
+opSlider.oninput = () => document.getElementById('opVal').textContent = opSlider.value + '%';
+scSlider.oninput = () => document.getElementById('scVal').textContent = scSlider.value + '%';
+padSlider.oninput = () => document.getElementById('padVal').textContent = padSlider.value + '%';
+
+// Drop zones
+function setupDropZone(zoneEl, inputEl, onFiles) {
+  zoneEl.onclick = () => inputEl.click();
+  zoneEl.ondragover = e => { e.preventDefault(); zoneEl.classList.add('drag-over'); };
+  zoneEl.ondragleave = () => zoneEl.classList.remove('drag-over');
+  zoneEl.ondrop = e => {
+    e.preventDefault();
+    zoneEl.classList.remove('drag-over');
+    const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+    if (files.length) onFiles(files);
+  };
+  inputEl.onchange = () => { onFiles([...inputEl.files]); inputEl.value = ''; };
+}
+
+setupDropZone(document.getElementById('imageZone'), document.getElementById('imageInput'), files => {
+  images = [...images, ...files];
+  updateUI();
+});
+
+setupDropZone(document.getElementById('logoZone'), document.getElementById('logoInput'), files => {
+  logo = files[0];
+  const r = new FileReader();
+  r.onload = e => {
+    logoDataUrl = e.target.result;
+    updateUI();
+  };
+  r.readAsDataURL(files[0]);
+});
+
+function updateUI() {
+  // Badge
+  const badgeEl = document.getElementById('imagesBadge');
+  badgeEl.innerHTML = images.length ? `<span class="badge">${images.length} photo${images.length !== 1 ? 's' : ''} ready</span>` : '';
+
+  // Logo preview
+  const logoContent = document.getElementById('logoContent');
+  if (logoDataUrl) {
+    logoContent.innerHTML = `
+      <img src="${logoDataUrl}" class="logo-preview-img" alt="logo">
+      <div class="drop-hint" style="color:var(--deep-rose);">✓ Logo loaded — click to change</div>
+    `;
+  }
+
+  // Thumbnails
+  const thumbsEl = document.getElementById('thumbs');
+  if (images.length > 0) {
+    thumbsEl.style.display = 'flex';
+    thumbsEl.innerHTML = '';
+    const show = images.slice(0, 20);
+    show.forEach((img, i) => {
+      const div = document.createElement('div');
+      div.className = 'thumb';
+      const url = URL.createObjectURL(img);
+      div.innerHTML = `<img src="${url}"><button class="thumb-remove" data-idx="${i}">×</button>`;
+      div.querySelector('.thumb-remove').onclick = e => {
+        e.stopPropagation();
+        images.splice(i, 1);
+        updateUI();
+      };
+      thumbsEl.appendChild(div);
+    });
+    if (images.length > 20) {
+      const more = document.createElement('div');
+      more.className = 'thumb';
+      more.style.cssText = 'display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--rose);background:var(--warm);';
+      more.textContent = '+' + (images.length - 20);
+      thumbsEl.appendChild(more);
+    }
+    const clearBtn = document.createElement('button');
+    clearBtn.className = 'clear-btn';
+    clearBtn.textContent = 'Clear all';
+    clearBtn.onclick = () => { images = []; updateUI(); };
+    thumbsEl.appendChild(clearBtn);
+  } else {
+    thumbsEl.style.display = 'none';
+  }
+
+  // Button state
+  const btn = document.getElementById('processBtn');
+  if (!images.length) {
+    btn.textContent = 'Add some photos to begin';
+    btn.className = 'process-btn disabled';
+    btn.disabled = true;
+  } else if (!logo) {
+    btn.textContent = 'Now add your logo';
+    btn.className = 'process-btn disabled';
+    btn.disabled = true;
+  } else {
+    btn.textContent = `Watermark ${images.length} photo${images.length !== 1 ? 's' : ''}`;
+    btn.className = 'process-btn ready';
+    btn.disabled = false;
+  }
+}
+
+// Image loading helper
+function loadImg(src) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = rej;
+    img.src = src;
+  });
+}
+
+// Process
+document.getElementById('processBtn').onclick = async function() {
+  if (!images.length || !logo) return;
+
+  const btn = this;
+  btn.className = 'process-btn working';
+  btn.disabled = true;
+
+  const progressBar = document.getElementById('progressBar');
+  const progressFill = document.getElementById('progressFill');
+  progressBar.style.display = 'block';
+  progressFill.style.width = '0%';
+
+  const opacity = opSlider.value / 100;
+  const scale = scSlider.value / 100;
+  const padding = padSlider.value / 100;
+
+  results = [];
+
+  for (let i = 0; i < images.length; i++) {
+    const imgUrl = URL.createObjectURL(images[i]);
+    const logoUrl = URL.createObjectURL(logo);
+
+    const [img, wm] = await Promise.all([loadImg(imgUrl), loadImg(logoUrl)]);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+
+    const wmW = img.width * scale;
+    const wmH = (wm.height / wm.width) * wmW;
+    const padX = img.width * padding;
+    const padY = img.height * padding;
+
+    let x, y;
+    switch (position) {
+      case 'bottom-right': x = img.width - wmW - padX; y = img.height - wmH - padY; break;
+      case 'bottom-left':  x = padX; y = img.height - wmH - padY; break;
+      case 'top-right':    x = img.width - wmW - padX; y = padY; break;
+      case 'top-left':     x = padX; y = padY; break;
+      case 'center':       x = (img.width - wmW) / 2; y = (img.height - wmH) / 2; break;
+    }
+
+    ctx.globalAlpha = opacity;
+    ctx.drawImage(wm, x, y, wmW, wmH);
+    ctx.globalAlpha = 1;
+
+    URL.revokeObjectURL(imgUrl);
+    URL.revokeObjectURL(logoUrl);
+
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+    const url = URL.createObjectURL(blob);
+    results.push({ name: images[i].name, url, blob });
+
+    const pct = ((i + 1) / images.length) * 100;
+    progressFill.style.width = pct + '%';
+    btn.textContent = `Working... ${Math.round(pct)}%`;
+
+    // Let the UI breathe
+    await new Promise(r => setTimeout(r, 10));
+  }
+
+  progressBar.style.display = 'none';
+  btn.textContent = `✓ Done! ${results.length} photos watermarked`;
+  btn.className = 'process-btn ready';
+  btn.disabled = false;
+  btn.onclick = document.getElementById('processBtn').onclick;
+
+  showResults();
+};
+
+function showResults() {
+  const section = document.getElementById('resultsSection');
+  section.style.display = 'block';
+  document.getElementById('resultsTitle').textContent = `${results.length} photo${results.length !== 1 ? 's' : ''} ready ✿`;
+
+  const grid = document.getElementById('resultsGrid');
+  grid.innerHTML = '';
+  results.forEach((r, i) => {
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    card.innerHTML = `<img src="${r.url}"><div class="name">${r.name}</div>`;
+    card.onclick = () => openModal(i);
+    grid.appendChild(card);
+  });
+
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Download all
+document.getElementById('downloadAllBtn').onclick = () => {
+  results.forEach(r => {
+    const a = document.createElement('a');
+    a.href = r.url;
+    a.download = 'watermarked_' + r.name;
+    a.click();
+  });
+};
+
+// Modal
+function openModal(i) {
+  const r = results[i];
+  document.getElementById('modalImg').src = r.url;
+  const dl = document.getElementById('modalDownload');
+  dl.href = r.url;
+  dl.download = 'watermarked_' + r.name;
+  document.getElementById('modal').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('modal').style.display = 'none';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+updateUI();
+</script>
+</body>
+</html>
