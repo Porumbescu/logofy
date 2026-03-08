@@ -6,6 +6,7 @@
 <title>Pentru Ticu — Watermark</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌸</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
   :root {
     --cream: #faf6f1;
@@ -881,13 +882,41 @@ function showResults() {
 }
 
 // Download all
-document.getElementById('downloadAllBtn').onclick = () => {
-  results.forEach(r => {
-    const a = document.createElement('a');
-    a.href = r.url;
-    a.download = 'watermarked_' + r.name;
-    a.click();
-  });
+document.getElementById('downloadAllBtn').onclick = async () => {
+  if (results.length <= 2) {
+    // Download individually
+    results.forEach(r => {
+      const a = document.createElement('a');
+      a.href = r.url;
+      a.download = 'watermarked_' + r.name;
+      a.click();
+    });
+  } else {
+    // ZIP download
+    const btn = document.getElementById('downloadAllBtn');
+    const origText = btn.textContent;
+    btn.textContent = 'Se pregătește ZIP...';
+    btn.disabled = true;
+
+    try {
+      const zip = new JSZip();
+      for (const r of results) {
+        zip.file('watermarked_' + r.name, r.blob);
+      }
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'watermarked_poze.zip';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch(e) {
+      console.error('Eroare ZIP:', e);
+    }
+
+    btn.textContent = origText;
+    btn.disabled = false;
+  }
 };
 
 // Modal
